@@ -1,0 +1,86 @@
+name: Minecraft Server Update Notify
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get Changed File
+        id: files
+        run: |
+          FILE=$(git diff --name-only HEAD^ HEAD | head -n 1)
+          FILE_NAME=$(basename "$FILE")
+
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "file_name=$FILE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Send Discord Embed
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d '{
+            "embeds": [
+              {
+                "title": "⛏️ Minecraft Server Update",
+                "description": "Na Minecraft serveru byla provedena nová aktualizace.",
+                "color": 5763719,
+                "fields": [
+                  {
+                    "name": "📜 Popis",
+                    "value": "**${{ github.event.head_commit.message }}**",
+                    "inline": false
+                  },
+                  {
+                    "name": "👤 Autor",
+                    "value": "**${{ github.actor }}**",
+                    "inline": true
+                  },
+                  {
+                    "name": "🌿 Branch",
+                    "value": "**${{ github.ref_name }}**",
+                    "inline": true
+                  },
+                  {
+                    "name": "🛠 Upravený soubor",
+                    "value": "`${{ steps.files.outputs.file_name }}`",
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Otevřít upravený soubor",
+                    "value": "https://github.com/${{ github.repository }}/blob/${{ github.sha }}/${{ steps.files.outputs.file }}",
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Otevřít repository",
+                    "value": "https://github.com/${{ github.repository }}",
+                    "inline": false
+                  },
+                  {
+                    "name": "📦 Commit",
+                    "value": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}",
+                    "inline": false
+                  },
+                  {
+                    "name": "🌍 GitHub Repository",
+                    "value": "https://github.com/${{ github.repository }}",
+                    "inline": false
+                  }
+                ],
+                "footer": {
+                  "text": "Minecraft Server • Homebax Studios"
+                },
+                "timestamp": "${{ github.event.head_commit.timestamp }}"
+              }
+            ]
+          }' \
+          ${{ secrets.DISCORD_WEBHOOK }}
